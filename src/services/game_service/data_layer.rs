@@ -168,9 +168,12 @@ impl GameDataLayer for DbGameDataLayer {
             user_id
         ).fetch_all(&self.db).await?;
 
+        let user_stats_id = sqlx::query!("SELECT stats_id FROM user_states WHERE user_id = ?", user_id)
+            .fetch_one(&self.db).await?.stats_id;
+
         let user_stats = sqlx::query_as!(Stats,
-            "SELECT power, health, armor, missing_next_turn as miss_turn FROM stats WHERE id = ?", 
-            user_id
+            "SELECT power, health, armor, missing_next_turn FROM stats WHERE id = ?",
+            user_stats_id
         )
             .fetch_one(&self.db).await?;
 

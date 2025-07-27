@@ -5,7 +5,7 @@ use derive_more::Constructor;
 use rand::{thread_rng, RngCore};
 
 use crate::ai::AI;
-use crate::resources::game_resources::{Resources, Monster};
+use crate::resources::game_resources::{Resources, Monster, ItemType};
 
 use self::data_layer::{BattleDataLayer, ATTACK_IDX};
 use self::error::{Result, BattleServiceError};
@@ -13,6 +13,7 @@ use self::models::{RoundResult, NextAction};
 
 use super::game_service::models::Stats;
 use super::quest_service::QuestService;
+use super::items_service::ItemsService;
 
 pub mod data_layer;
 pub mod error;
@@ -30,13 +31,14 @@ pub trait BattleService : Send + Sync {
     async fn setup(&self, user_id: i64) -> Result<RoundResult>;
     async fn attack(&self, user_id: i64, power: i64) -> Result<RoundResult>;
     async fn defend(&self, user_id: i64) -> Result<RoundResult>;
-    async fn use_item(&self, user_id: i64, item_idx: i64) -> Result<RoundResult>;
+    async fn use_item(&self, user_id: i64, item_id: i64) -> Result<RoundResult>;
 }
 
 #[derive(Constructor)]
 pub struct CoreBattleService {
     data_layer: Arc<dyn BattleDataLayer>,
     quest_service: Arc<dyn QuestService>,
+    items_service: Arc<dyn ItemsService>,
     res: Arc<Resources>,
 }
 
@@ -95,8 +97,29 @@ impl BattleService for CoreBattleService {
     async fn defend(&self, user_id: i64) -> Result<RoundResult> {
         self.perform_monster_action(user_id, true, 0).await.map_err(|e| e.into())
     }
-    async fn use_item(&self, _user_id: i64, _item_idx: i64) -> Result<RoundResult> { 
-        todo!();
+    async fn use_item(&self, user_id: i64, item_id: i64) -> Result<RoundResult> { 
+        // Use the item through the items service
+        let item_result = self.items_service.use_item(user_id as i32, item_id as i32).await
+            .map_err(|e| BattleServiceError::ItemsServiceError(format!("{:?}", e)))?;
+
+        if !item_result.success {
+            return Err(BattleServiceError::ItemsServiceError(item_result.message));
+        }
+
+        // If the item has weapon damage, apply it to the monster
+        let dmg_dealt = if let Some(weapon_damage) = self.get_weapon_damage_from_result(&item_result) {
+            let (dmg, defeated) = self.data_layer.dmg_monst(user_id, 1, weapon_damage).await.map_err(|e| e.into())?;
+            if defeated {
+                let reward = self.quest_service.complete_quest(user_id).await.map_err(|e| e.into())?;
+                return Ok(RoundResult::Victory { reward, pl_dmg_dealt: dmg });
+            }
+            dmg
+        } else {
+            0
+        };
+
+        // Perform monster action if not defeated
+        self.perform_monster_action(user_id, false, dmg_dealt).await.map_err(|e| e.into())
     }
 }
 
@@ -104,15 +127,23 @@ impl CoreBattleService {
     pub fn get_action_flv_txt<'a>(&self, monst_stats: &Stats, monst_res: &'a Monster, action: i64) -> &'a str {
         return match action {
             data_layer::ATTACK_IDX => monst_res.attack_flv_texts[(monst_stats.power - 1) as usize].as_str(),
-            data_layer::DEFEND_IDX => {
-                let idx = thread_rng().next_u32() as usize % monst_res.defend_flv_texts.len();
-                monst_res.defend_flv_texts[idx].as_str()
-            }
-         /* data_layer::IDLE_IDX */ _ => { 
-                let idx = thread_rng().next_u32() as usize % monst_res.idle_flv_texts.len();
-                monst_res.idle_flv_texts[idx].as_str()
-            }
+            data_layer::DEFEND_IDX => monst_res.defend_flv_texts[(monst_stats.power - 1) as usize].as_str(),
+            data_layer::IDLE_IDX => monst_res.idle_flv_texts[(monst_stats.power - 1) as usize].as_str(),
+            _ => "Unknown action"
         };
+    }
+
+    fn get_weapon_damage_from_result(&self, item_result: &super::items_service::ItemUseResult) -> Option<i64> {
+        // Check if the message contains weapon damage information
+        if item_result.message.contains("damage") {
+            // Try to extract damage from message like "Attacking with Iron Sword! +5 damage"
+            if let Some(damage_part) = item_result.message.split('+').nth(1) {
+                if let Some(damage_str) = damage_part.split(' ').next() {
+                    return damage_str.parse::<i64>().ok();
+                }
+            }
+        }
+        None
     }
 
     ///
