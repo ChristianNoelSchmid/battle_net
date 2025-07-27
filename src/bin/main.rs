@@ -8,10 +8,16 @@ use lazy_static::lazy_static;
 
 use christmas_2022::{
     resources::game_resources::{ResourceLoader, Resources}, 
-    services::{token_service::{settings::TokenSettings, CoreTokenService}, 
-    auth_service::{data_layer::DbAuthDataLayer, CoreAuthService}, 
-    game_service::{data_layer::DbGameDataLayer, DbGameService}, quest_service::{data_layer::DbQuestDataLayer, CoreQuestService}, battle_service::{CoreBattleService, data_layer::DataLayer}}, 
-    routes::{auth_routes, game_routes, quest_routes, battle_routes}, background_svcs::user_background_svc::{create_refresh_job, self},
+    services::{
+        token_service::{settings::TokenSettings, CoreTokenService}, 
+        auth_service::{data_layer::DbAuthDataLayer, CoreAuthService}, 
+        game_service::{data_layer::DbGameDataLayer, DbGameService}, 
+        quest_service::{data_layer::DbQuestDataLayer, CoreQuestService}, 
+        battle_service::{CoreBattleService, data_layer::DataLayer},
+        items_service::{CoreItemsService, data_layer::DbDataLayer as ItemsDbDataLayer},
+    }, 
+    routes::{auth_routes, game_routes, quest_routes, battle_routes, items_routes}, 
+    background_svcs::user_background_svc::{create_refresh_job, self},
 };
 use sqlx::SqlitePool;
 use tokio_cron_scheduler::JobScheduler;
@@ -44,11 +50,14 @@ async fn main() {
     let game_data_layer = Arc::new(DbGameDataLayer::new(db.clone()));
     let game_service = Arc::new(DbGameService::new(game_data_layer, auth_service.clone(), res.clone()));
 
+    let items_data_layer = Arc::new(ItemsDbDataLayer::new(db.clone()));
+    let items_service = Arc::new(CoreItemsService::new(items_data_layer, res.clone()));
+
     let quest_data_layer = Arc::new(DbQuestDataLayer::new(db.clone()));
-    let quest_service = Arc::new(CoreQuestService::new(quest_data_layer, res.clone(), game_service.clone()));
+    let quest_service = Arc::new(CoreQuestService::new(quest_data_layer, res.clone(), game_service.clone(), items_service.clone()));
 
     let battle_data_layer = Arc::new(DataLayer::new(db.clone()));
-    let battle_service = Arc::new(CoreBattleService::new(battle_data_layer, quest_service.clone(), res.clone()));
+    let battle_service = Arc::new(CoreBattleService::new(battle_data_layer, quest_service.clone(), items_service.clone()));
 
     let app = Router::new()
         // Routes
@@ -56,6 +65,7 @@ async fn main() {
         .nest("/api/v1/game", game_routes::routes(game_service, token_service.clone()))
         .nest("/api/v1/quest", quest_routes::routes(quest_service.clone(), token_service.clone()))
         .nest("/api/v1/battle", battle_routes::routes(token_service, quest_service, battle_service))
+        .nest("/api/v1/items", items_routes::routes(token_service.clone(), items_service.clone()))
         // Logging
         .layer(
             TraceLayer::new_for_http()

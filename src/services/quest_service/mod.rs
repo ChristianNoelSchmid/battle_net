@@ -7,17 +7,19 @@ use std::sync::Arc;
 
 use axum::async_trait;
 use derive_more::Constructor;
-use rand::{seq::{IteratorRandom, SliceRandom}, thread_rng};
+use rand::{seq::{IteratorRandom, SliceRandom}, thread_rng, Rng};
 
 use self::models::{
     QuestReward, RiddleStatus, QuestStateModel, QuestRiddleModel, QuestMonsterModel, QuestConsequences,
 };
 
 use crate::resources::game_resources::Resources;
+use crate::data_layer_error::DataLayerError;
 
 use self::{error::{Result, QuestServiceError}, data_layer::QuestDataLayer};
 
 use super::game_service::{models::Stats, GameService};
+use super::items_service::ItemsService;
 
 #[async_trait]
 pub trait QuestService: Send + Sync {
@@ -52,6 +54,7 @@ pub struct CoreQuestService {
     data_layer: Arc<dyn QuestDataLayer>,
     res: Arc<Resources>,
     game_service: Arc<dyn GameService>,
+    items_service: Arc<dyn ItemsService>,
 }
 
 #[async_trait]
@@ -167,6 +170,23 @@ impl QuestService for CoreQuestService {
             );
         }
 
+        // Generate random item rewards (1-2 items)
+        let mut rng = thread_rng();
+        let num_items = if rng.gen_bool(0.3) { 2 } else { 1 }; // 30% chance for 2 items
+        let mut awarded_item_idxs = Vec::new();
+
+        for _ in 0..num_items {
+            // Random item index from available items
+            let item_idx = (0..self.res.items.len()).choose(&mut rng).unwrap();
+            
+            // Add the item to user's inventory
+            let item_id = self.items_service.add_item_to_user(user_id as i32, item_idx as i32).await
+                .map_err(|_| QuestServiceError::DataLayerError(crate::data_layer_error::DataLayerError::DatabaseError))?;
+
+            awarded_item_idxs.push(item_idx as i64);
+            log::info!("Awarded item {} (ID: {}) to user {}", item_idx, item_id, user_id);
+        }
+
         // Get a new confirmed card
         let new_card = self.data_layer.get_rand_unconfirmed_card(user_id, &self.res.evd_cats_and_cards).await.map_err(|e| e.into())?;
 
@@ -179,7 +199,7 @@ impl QuestService for CoreQuestService {
         // Return the successful quest reward
         return Ok(
             QuestReward {
-                item_idxs: vec![],
+                item_idxs: awarded_item_idxs,
                 card: new_card
             },
         );

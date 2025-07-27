@@ -16,6 +16,7 @@ pub mod routes {
     pub mod quest_routes;
     pub mod auth_routes;
     pub mod battle_routes;
+    pub mod items_routes;
 }
 
 pub mod resources {
@@ -28,6 +29,5 @@ pub mod services {
     pub mod token_service;
     pub mod quest_service;
     pub mod battle_service;
-    // pub mod items_service;
-    // pub mod effects_service;
+    pub mod items_service;
 }

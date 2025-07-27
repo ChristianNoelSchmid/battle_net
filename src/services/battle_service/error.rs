@@ -12,6 +12,8 @@ pub enum BattleServiceError {
     DataLayerError(DataLayerError),
     #[error("An internal server error has occurred")]
     QuestServiceError(QuestServiceError),
+    #[error("Items service error: {0}")]
+    ItemsServiceError(String),
     #[error("Quest not found for user {0}")]
     QuestNotFound(i32),
     #[error("Too much power requested. Request less.")]
@@ -36,5 +38,11 @@ impl IntoResponse for BattleServiceError {
         } else {
             (StatusCode::BAD_REQUEST, self.to_string()).into_response()
         }
+    }
+}
+
+impl From<QuestServiceError> for BattleServiceError {
+    fn from(err: QuestServiceError) -> Self {
+        BattleServiceError::QuestServiceError(err)
     }
 }

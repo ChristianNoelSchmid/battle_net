@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::{fs, path::PathBuf};
-
-// use crate::effects::EffectType;
+use std::collections::HashMap;
 
 #[derive(Default)]
 pub struct ResourceLoader {
@@ -124,7 +123,7 @@ pub struct Riddle {
     pub answer: String,
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum ItemType {
     #[serde(rename = "weapon")]
     Weapon(i64),
@@ -134,7 +133,6 @@ pub enum ItemType {
     Consumable,
 }
 
-#[serde_with::serde_as]
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Item {
     pub tag: String,
@@ -143,13 +141,11 @@ pub struct Item {
     pub item_type: ItemType,
     pub img_path: Option<String>,
 
-    /*#[serde_as(as = "Option<EnumMap>")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub effects_self: Option<Vec<EffectType>>,
+    pub effects_self: Option<HashMap<String, i64>>,
 
-    #[serde_as(as = "Option<EnumMap>")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub effects_other: Option<Vec<EffectType>>,*/
+    pub effects_other: Option<HashMap<String, i64>>,
 }
 
 #[serde_with::serde_as]

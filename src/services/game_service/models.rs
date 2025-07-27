@@ -38,12 +38,12 @@ pub struct GameStateModel {
     pub first_login: bool,
 }
 
-#[derive(Serialize, Clone, Constructor, Copy)]
+#[derive(Constructor, Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Stats {
     pub health: i64,
     pub power: i64,
     pub armor: i64,
-    pub miss_turn: bool,
+    pub missing_next_turn: bool,
 }
 
 #[derive(Debug, Serialize)]

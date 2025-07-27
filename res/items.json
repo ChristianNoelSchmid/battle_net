@@ -1,14 +1,66 @@
 [{
     "tag": "basic_dagger",
-    "name": "dagger",
+    "name": "Basic Dagger",
     "item_type": { "weapon": 3 },
-    "flavor_text": "A simple utility weapon. It dag dag dags!"
+    "flavor_text": "A simple utility weapon. It dag dag dags!",
+    "img_path": "/items/basic_dagger.png"
 }, {
     "tag": "basic_armor_padded",
     "name": "Padded Armor",
     "item_type": "equipable",
     "flavor_text": "Despite its name, its uncomfortable to wear.",
+    "img_path": "/items/padded_armor.png",
     "effects_self": {
         "boost_armor": 3
     }
+}, {
+    "tag": "health_potion",
+    "name": "Health Potion",
+    "item_type": "consumable",
+    "flavor_text": "A red potion that restores vitality.",
+    "img_path": "/items/health_potion.png",
+    "effects_self": {
+        "boost_health": 15
+    }
+}, {
+    "tag": "iron_sword",
+    "name": "Iron Sword",
+    "item_type": { "weapon": 5 },
+    "flavor_text": "A sturdy iron blade that has seen many battles.",
+    "img_path": "/items/iron_sword.png"
+}, {
+    "tag": "leather_armor",
+    "name": "Leather Armor",
+    "item_type": "equipable",
+    "flavor_text": "Well-crafted leather armor that provides decent protection.",
+    "img_path": "/items/leather_armor.png",
+    "effects_self": {
+        "boost_armor": 5,
+        "boost_health": 5
+    }
+}, {
+    "tag": "power_crystal",
+    "name": "Power Crystal",
+    "item_type": "consumable",
+    "flavor_text": "A glowing crystal that enhances combat prowess temporarily.",
+    "img_path": "/items/power_crystal.png",
+    "effects_self": {
+        "boost_power": 2
+    }
+}, {
+    "tag": "steel_plate_armor",
+    "name": "Steel Plate Armor",
+    "item_type": "equipable",
+    "flavor_text": "Heavy steel armor that provides excellent protection.",
+    "img_path": "/items/steel_armor.png",
+    "effects_self": {
+        "boost_armor": 8,
+        "boost_health": 3
+    }
+}, {
+    "tag": "enchanted_blade",
+    "name": "Enchanted Blade",
+    "item_type": { "weapon": 8 },
+    "flavor_text": "A magical sword that gleams with otherworldly power.",
+    "img_path": "/items/enchanted_blade.png"
 }]
